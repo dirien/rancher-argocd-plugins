@@ -1,0 +1,30 @@
+server:
+  config:
+    configManagementPlugins: |
+      - name: kbld
+        generate:                 
+          command: ["bash", "-c"]
+          args: ['helm template --release-name "$ARGOCD_APP_NAME" -f <(echo "$HELM_VALUES") . > kbld.yaml && kbld -f kbld.yaml >> final.yaml && cat final.yaml']
+
+repoServer:
+  initContainers:
+    - name: download-tools
+      image: busybox:1.35.0
+      command: [ sh, -c ]
+      env:
+        - name: KBLD_VERSION
+          value: "0.33.0"
+      args:
+        - wget -q https://github.com/vmware-tanzu/carvel-kbld/releases/download/v${KBLD_VERSION}/kbld-linux-amd64 &&
+          mv kbld-linux-amd64 /custom-tools/kbld &&
+          chmod +x /custom-tools/kbld
+      volumeMounts:
+        - mountPath: /custom-tools
+          name: custom-tools
+  volumes:
+    - name: custom-tools
+      emptyDir: { }
+  volumeMounts:
+    - mountPath: /usr/local/bin/kbld
+      name: custom-tools
+      subPath: kbld
